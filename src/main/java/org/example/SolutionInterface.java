@@ -5,11 +5,13 @@ import java.util.Set;
 
 public interface SolutionInterface {
 
-    Set<List<String>> readAndFilterLines(String filePath);
+    List<String> readAndFilterLines(String filePath);
 
-    List<Set<List<String>>> groupLines(Set<List<String>> lines);
+    List<List<String>> groupLines(List<String> lines);
 
-    void writeGroupsToFile(List<Set<List<String>>> groups, String outputPath);
+
+
+    void writeGroupsToFile(List<List<String>> groups, String outputPath);
 
 
     boolean isLineCorrect(String line);

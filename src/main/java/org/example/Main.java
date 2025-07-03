@@ -16,8 +16,14 @@ public class Main {
         long start = System.nanoTime();
 
         Solution solution = new Solution();
-        Set<List<String>> filteredLines = solution.readAndFilterLines(inputFile);
-        List<Set<List<String>>> groups = solution.groupLines(filteredLines);
+
+
+        List<String> filteredLines = solution.readAndFilterLines(inputFile);
+
+
+        List<List<String>> groups = solution.groupLines(filteredLines);
+
+
         solution.writeGroupsToFile(groups, outputFile);
 
         long end = System.nanoTime();

@@ -6,94 +6,119 @@ import java.nio.file.Files;
 import java.util.*;
 
 public class Solution implements SolutionInterface{
-    private final Map<String, List<Integer>> positionValueMap = new HashMap<>();
+
 
     @Override
-    public Set<List<String>> readAndFilterLines(String filePath) {
-        Set<List<String>> lines = new HashSet<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))){
-            for(String line; (line = br.readLine())!= null;){
-                List<String> columns = Arrays.asList(line.split(";"));
-                int count = 0;
+    public List<String> readAndFilterLines(String filePath) {
+        List<String> lines = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] columns = line.split(";");
+                boolean valid = true;
+
                 for (String column : columns) {
-                    if (!isLineCorrect(column)) count++;
-                }
-                if(count == 0){
-                    lines.add(columns);
+                    if (!isLineCorrect(column)) {
+                        valid = false;
+                        break;
+                    }
                 }
 
-
+                if (valid) {
+                    lines.add(line);
+                }
             }
-        }catch (Exception e) {
-            System.out.println("open file error");
+        } catch (IOException e) {
+            System.err.println("Error reading file: " + e.getMessage());
         }
+
         return lines;
     }
 
+
     @Override
-    public List<Set<List<String>>> groupLines(Set<List<String>> lines) {
-        // Все строки (после фильтрации)
-        List<List<String>> lineList = new ArrayList<>(lines);
-        int n = lineList.size();
+    public List<List<String>> groupLines(List<String> lines) {
+        // Для отображения: позиция
+        Map<Integer, Map<String, Integer>> positionToValueToIndex = new HashMap<>();
+
+        int n = lines.size();
         UnionFind uf = new UnionFind(n);
+        List<String> validLines = new ArrayList<>();
 
+        // Чтение и обработка строк
+        for (int index = 0; index < lines.size(); index++) {
+            String line = lines.get(index);
+            String[] columns = line.split(";");
 
-        for (int i = 0; i < n; i++) {
-            List<String> cols = lineList.get(i);
-            for (int pos = 0; pos < cols.size(); pos++) {
-                String value = cols.get(pos).trim();
+            // Валидация
+            boolean isValid = true;
+            for (String col : columns) {
+                if (!isLineCorrect(col)) {
+                    isValid = false;
+                    break;
+                }
+            }
+            if (!isValid) continue;
 
+            validLines.add(line); // сохранить валидную строку
 
-                if (!value.isEmpty() && !(value.equals("\"\"")) ) {
-                    String key = pos + ":" + value;
-                    positionValueMap.computeIfAbsent(key, k -> new ArrayList<>()).add(i);
+            for (int pos = 0; pos < columns.length; pos++) {
+                String value = columns[pos].trim();
+                if (value.isEmpty() || value.equals("\"\"")) continue;
+
+                positionToValueToIndex
+                        .computeIfAbsent(pos, k -> new HashMap<>());
+
+                Map<String, Integer> valueToIndex = positionToValueToIndex.get(pos);
+
+                if (valueToIndex.containsKey(value)) {
+                    int otherIndex = valueToIndex.get(value);
+                    uf.union(index, otherIndex);
+                } else {
+                    valueToIndex.put(value, index);
                 }
             }
         }
 
-
-        for (List<Integer> ids : positionValueMap.values()) {
-            for (int i = 1; i < ids.size(); i++) {
-                uf.union(ids.get(0), ids.get(i));
-            }
-        }
-
-
-        Map<Integer, Set<List<String>>> groups = new HashMap<>();
-        for (int i = 0; i < n; i++) {
+        // Сбор групп по корню
+        Map<Integer, List<String>> groups = new HashMap<>();
+        for (int i = 0; i < validLines.size(); i++) {
             int root = uf.find(i);
-            groups.computeIfAbsent(root, k -> new HashSet<>()).add(lineList.get(i));
+            groups.computeIfAbsent(root, k -> new ArrayList<>()).add(validLines.get(i));
         }
 
-        return new ArrayList<>(groups.values());
+        // Сортировка групп по убыванию размера
+        List<List<String>> result = new ArrayList<>(groups.values());
+        result.sort((a, b) -> Integer.compare(b.size(), a.size()));
+        return result;
     }
 
+
+
+
     @Override
-    public void writeGroupsToFile(List<Set<List<String>>> groups, String outputPath) {
-
-        groups.sort((a, b) -> Integer.compare(b.size(), a.size()));
-
+    public void writeGroupsToFile(List<List<String>> groups, String outputPath) {
         int nonSingleGroups = 0;
-        for (Set<List<String>> group : groups) {
+        for (List<String> group : groups) {
             if (group.size() > 1) nonSingleGroups++;
         }
 
         try (BufferedWriter writer = Files.newBufferedWriter(new File(outputPath).toPath(), StandardCharsets.UTF_8)) {
-            writer.write("Количество групп с более чем одним элементом: " + nonSingleGroups + "\n");
+            writer.write("Количество групп с более чем одним элементом: " + nonSingleGroups + "\n\n");
 
             int groupNumber = 1;
-            for (Set<List<String>> group : groups) {
+            for (List<String> group : groups) {
                 if (group.size() > 1) {
                     writer.write("Группа " + groupNumber++ + "\n");
-                    for (List<String> row : group) {
-                        writer.write(String.join(";", row) + "\n");
+                    for (String line : group) {
+                        writer.write(line + "\n");
                     }
                     writer.write("\n");
                 }
             }
-
         } catch (IOException e) {
-            System.err.println("Error writing file: " + e.getMessage());
+            System.err.println("Ошибка при записи в файл: " + e.getMessage());
         }
     }
 
