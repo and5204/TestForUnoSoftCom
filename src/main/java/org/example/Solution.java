@@ -41,8 +41,10 @@ public class Solution implements SolutionInterface{
         for (int i = 0; i < n; i++) {
             List<String> cols = lineList.get(i);
             for (int pos = 0; pos < cols.size(); pos++) {
-                String value = cols.get(pos);
-                if (!value.isEmpty()) {
+                String value = cols.get(pos).trim();
+
+
+                if (!value.isEmpty() && !(value.equals("\"\"")) ) {
                     String key = pos + ":" + value;
                     positionValueMap.computeIfAbsent(key, k -> new ArrayList<>()).add(i);
                 }
