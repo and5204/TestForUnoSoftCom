@@ -9,8 +9,9 @@ public class Solution implements SolutionInterface{
 
 
     @Override
+
     public List<String> readAndFilterLines(String filePath) {
-        List<String> lines = new ArrayList<>();
+        Set<String> uniqueLines = new HashSet<>();
 
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
@@ -26,73 +27,56 @@ public class Solution implements SolutionInterface{
                 }
 
                 if (valid) {
-                    lines.add(line);
+                    uniqueLines.add(line);
                 }
             }
         } catch (IOException e) {
             System.err.println("Error reading file: " + e.getMessage());
         }
 
-        return lines;
+        return new ArrayList<>(uniqueLines);
     }
+
+
+
 
 
     @Override
     public List<List<String>> groupLines(List<String> lines) {
-        // Для отображения: позиция
-        Map<Integer, Map<String, Integer>> positionToValueToIndex = new HashMap<>();
+        Map<String, Integer> positionValueToIndex = new HashMap<>(lines.size() * 2);
+        UnionFind uf = new UnionFind(lines.size());
+        StringBuilder keyBuilder = new StringBuilder();
 
-        int n = lines.size();
-        UnionFind uf = new UnionFind(n);
-        List<String> validLines = new ArrayList<>();
-
-        // Чтение и обработка строк
         for (int index = 0; index < lines.size(); index++) {
-            String line = lines.get(index);
-            String[] columns = line.split(";");
-
-            // Валидация
-            boolean isValid = true;
-            for (String col : columns) {
-                if (!isLineCorrect(col)) {
-                    isValid = false;
-                    break;
-                }
-            }
-            if (!isValid) continue;
-
-            validLines.add(line); // сохранить валидную строку
-
+            String[] columns = lines.get(index).split(";");
             for (int pos = 0; pos < columns.length; pos++) {
-                String value = columns[pos].trim();
-                if (value.isEmpty() || value.equals("\"\"")) continue;
+                String value = columns[pos];
+                if (!value.isEmpty() && !value.equals("\"\"")) {
+                    keyBuilder.setLength(0);
+                    keyBuilder.append(pos).append(':').append(value);
+                    String key = keyBuilder.toString();
 
-                positionToValueToIndex
-                        .computeIfAbsent(pos, k -> new HashMap<>());
-
-                Map<String, Integer> valueToIndex = positionToValueToIndex.get(pos);
-
-                if (valueToIndex.containsKey(value)) {
-                    int otherIndex = valueToIndex.get(value);
-                    uf.union(index, otherIndex);
-                } else {
-                    valueToIndex.put(value, index);
+                    Integer otherIndex = positionValueToIndex.get(key);
+                    if (otherIndex != null) {
+                        uf.union(index, otherIndex);
+                    } else {
+                        positionValueToIndex.put(key, index);
+                    }
                 }
             }
         }
 
-        // Сбор групп по корню
         Map<Integer, List<String>> groups = new HashMap<>();
-        for (int i = 0; i < validLines.size(); i++) {
+        for (int i = 0; i < lines.size(); i++) {
             int root = uf.find(i);
-            groups.computeIfAbsent(root, k -> new ArrayList<>()).add(validLines.get(i));
+            groups.computeIfAbsent(root, k -> new ArrayList<>()).add(lines.get(i));
         }
 
-        // Сортировка групп по убыванию размера
         List<List<String>> result = new ArrayList<>(groups.values());
         result.sort((a, b) -> Integer.compare(b.size(), a.size()));
         return result;
     }
+
 
 
 
